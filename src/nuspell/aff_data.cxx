@@ -775,6 +775,10 @@ auto parse_affix(Aff_Line_Stream& in, string& command, vector<AffixT>& vec,
 		if (elem.appending == L"0")
 			elem.appending.clear();
 		in >> elem.condition;
+        if (in.fail()) {
+            elem.condition = L".";
+            reset_failbit_istream(in);
+        }
 		// in >> elem.morphological_fields;
 	}
 	else {
