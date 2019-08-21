@@ -776,6 +776,12 @@ auto parse_affix(Aff_Line_Stream& in, string& command, vector<AffixT>& vec,
 			elem.appending.clear();
 		in >> elem.condition;
         if (in.fail()) {
+            cerr << "Nuspell warning: missing condition for "
+                 << command.substr(0, 3) << " ";
+            if (command.size() == 5) {
+                cerr << command[4];
+            }
+            cerr << command[3] << endl;
             elem.condition = L".";
             reset_failbit_istream(in);
         }
