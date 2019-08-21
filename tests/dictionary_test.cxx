@@ -332,7 +332,8 @@ TEST_CASE("Dictionary suggestions map_suggest", "[dictionary]")
 
 	auto out_sug = List_WStrings();
 	auto expected_sug = List_WStrings{good};
-	d.map_suggest(w, out_sug);
+	auto attempt = (size_t)0;
+	d.map_suggest(w, out_sug, attempt);
 	CHECK(out_sug == expected_sug);
 
 	d.words.emplace("æon", u"");
@@ -343,7 +344,8 @@ TEST_CASE("Dictionary suggestions map_suggest", "[dictionary]")
 	CHECK(d.spell_priv(w) == false);
 	out_sug.clear();
 	expected_sug = {good};
-	d.map_suggest(w, out_sug);
+	attempt = (size_t)0;
+	d.map_suggest(w, out_sug, attempt);
 	CHECK(out_sug == expected_sug);
 
 	d.words.emplace("zijn", u"");
@@ -354,7 +356,8 @@ TEST_CASE("Dictionary suggestions map_suggest", "[dictionary]")
 	CHECK(d.spell_priv(w) == false);
 	out_sug.clear();
 	expected_sug = {good};
-	d.map_suggest(w, out_sug);
+	attempt = (size_t)0;
+	d.map_suggest(w, out_sug, attempt);
 	CHECK(out_sug == expected_sug);
 
 	d.words.emplace("hear", u"");
@@ -365,7 +368,8 @@ TEST_CASE("Dictionary suggestions map_suggest", "[dictionary]")
 	CHECK(d.spell_priv(w) == false);
 	out_sug.clear();
 	expected_sug = {good};
-	d.map_suggest(w, out_sug);
+	attempt = (size_t)0;
+	d.map_suggest(w, out_sug, attempt);
 	CHECK(out_sug == expected_sug);
 }
 

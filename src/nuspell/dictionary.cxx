@@ -39,6 +39,10 @@ namespace nuspell {
 using namespace std;
 using boost::make_iterator_range;
 
+const auto MAXWLEN = size_t(180);
+const auto MAXNSUG = size_t(15);
+const auto MAXNATT = size_t(96);
+
 template <class L>
 class At_Scope_Exit {
 	L& lambda;
@@ -1810,13 +1814,21 @@ auto Dict_Base::check_compound_with_rules(
 auto Dict_Base::suggest_priv(std::wstring& word, List_WStrings& out) const
     -> void
 {
-	rep_suggest(word, out);
-	map_suggest(word, out);
-	extra_char_suggest(word, out);
-	keyboard_suggest(word, out);
-	bad_char_suggest(word, out);
-	forgotten_char_suggest(word, out);
-	phonetic_suggest(word, out);
+	if (!rep_suggest(word, out))
+		return;
+	auto attempt = (size_t)0;
+	if (!map_suggest(word, out, attempt))
+		return;
+	if (!extra_char_suggest(word, out))
+		return;
+	if (!keyboard_suggest(word, out))
+		return;
+	if (!bad_char_suggest(word, out))
+		return;
+	if (!forgotten_char_suggest(word, out))
+		return;
+	if (!phonetic_suggest(word, out))
+		return;
 }
 
 auto Dict_Base::add_sug_if_correct(std::wstring& word, List_WStrings& out) const
@@ -1856,7 +1868,7 @@ auto Dict_Base::try_rep_suggestion(std::wstring& word, List_WStrings& out) const
 }
 
 auto Dict_Base::rep_suggest(std::wstring& word, List_WStrings& out) const
-    -> void
+    -> bool
 {
 	auto& reps = replacements;
 	for (auto& r : reps.whole_word_replacements()) {
@@ -1866,6 +1878,8 @@ auto Dict_Base::rep_suggest(std::wstring& word, List_WStrings& out) const
 			word = to;
 			try_rep_suggestion(word, out);
 			word = from;
+			if (out.size() >= MAXNSUG)
+				return false;
 		}
 	}
 	for (auto& r : reps.start_word_replacements()) {
@@ -1875,6 +1889,8 @@ auto Dict_Base::rep_suggest(std::wstring& word, List_WStrings& out) const
 			word.replace(0, from.size(), to);
 			try_rep_suggestion(word, out);
 			word.replace(0, to.size(), from);
+			if (out.size() >= MAXNSUG)
+				return false;
 		}
 	}
 	for (auto& r : reps.end_word_replacements()) {
@@ -1886,6 +1902,8 @@ auto Dict_Base::rep_suggest(std::wstring& word, List_WStrings& out) const
 			word.replace(pos, word.npos, to);
 			try_rep_suggestion(word, out);
 			word.replace(pos, word.npos, from);
+			if (out.size() >= MAXNSUG)
+				return false;
 		}
 	}
 	for (auto& r : reps.any_place_replacements()) {
@@ -1896,23 +1914,29 @@ auto Dict_Base::rep_suggest(std::wstring& word, List_WStrings& out) const
 			word.replace(i, from.size(), to);
 			try_rep_suggestion(word, out);
 			word.replace(i, to.size(), from);
+			if (out.size() >= MAXNSUG)
+				return false;
 		}
 	}
+	return true;
 }
 
 auto Dict_Base::extra_char_suggest(std::wstring& word, List_WStrings& out) const
-    -> void
+    -> bool
 {
 	for (auto i = word.size() - 1; i != size_t(-1); --i) {
 		auto c = word[i];
 		word.erase(i, 1);
 		add_sug_if_correct(word, out);
 		word.insert(i, 1, c);
+		if (out.size() >= MAXNSUG)
+			return false;
 	}
+	return true;
 }
 
 auto Dict_Base::map_suggest(std::wstring& word, List_WStrings& out,
-                            size_t i) const -> void
+                            size_t& attempt, size_t i) const -> bool
 {
 	for (; i != word.size(); ++i) {
 		for (auto& e : similarities) {
@@ -1924,14 +1948,24 @@ auto Dict_Base::map_suggest(std::wstring& word, List_WStrings& out,
 					continue;
 				word[i] = c;
 				add_sug_if_correct(word, out);
-				map_suggest(word, out, i + 1);
+				auto ret =
+				    map_suggest(word, out, ++attempt, i + 1);
 				word[i] = e.chars[j];
+				if (!ret || out.size() >= MAXNSUG)
+					return false;
+				if (attempt >= MAXNATT)
+					return true;
 			}
 			for (auto& r : e.strings) {
 				word.replace(i, 1, r);
 				add_sug_if_correct(word, out);
-				map_suggest(word, out, i + r.size());
+				auto ret = map_suggest(word, out, ++attempt,
+				                       i + r.size());
 				word.replace(i, r.size(), 1, e.chars[j]);
+				if (!ret || out.size() >= MAXNSUG)
+					return false;
+				if (attempt >= MAXNATT)
+					return true;
 			}
 		try_find_strings:
 			for (auto& f : e.strings) {
@@ -1940,24 +1974,35 @@ auto Dict_Base::map_suggest(std::wstring& word, List_WStrings& out,
 				for (auto c : e.chars) {
 					word.replace(i, f.size(), 1, c);
 					add_sug_if_correct(word, out);
-					map_suggest(word, out, i + 1);
+					auto ret = map_suggest(
+					    word, out, ++attempt, i + 1);
 					word.replace(i, 1, f);
+					if (!ret || out.size() >= MAXNSUG)
+						return false;
+					if (attempt >= MAXNATT)
+						return true;
 				}
 				for (auto& r : e.strings) {
 					if (f == r)
 						continue;
 					word.replace(i, f.size(), r);
 					add_sug_if_correct(word, out);
-					map_suggest(word, out, i + r.size());
+					auto ret = map_suggest(
+					    word, out, ++attempt, i + r.size());
 					word.replace(i, r.size(), f);
+					if (!ret || out.size() >= MAXNSUG)
+						return false;
+					if (attempt >= MAXNATT)
+						return true;
 				}
 			}
 		}
 	}
+	return true;
 }
 
 auto Dict_Base::keyboard_suggest(std::wstring& word, List_WStrings& out) const
-    -> void
+    -> bool
 {
 	auto& kb = keyboard_closeness;
 	for (size_t j = 0; j != word.size(); ++j) {
@@ -1967,25 +2012,33 @@ auto Dict_Base::keyboard_suggest(std::wstring& word, List_WStrings& out) const
 			word[j] = upp_c;
 			add_sug_if_correct(word, out);
 			word[j] = c;
+			if (out.size() >= MAXNSUG)
+				return false;
 		}
 		for (auto i = kb.find(c); i != kb.npos; i = kb.find(c, i + 1)) {
 			if (i != 0 && kb[i - 1] != '|') {
 				word[j] = kb[i - 1];
 				add_sug_if_correct(word, out);
 				word[j] = c;
+				if (out.size() >= MAXNSUG)
+					return false;
 			}
 			if (i + 1 != kb.size() && kb[i + 1] != '|') {
 				word[j] = kb[i + 1];
 				add_sug_if_correct(word, out);
 				word[j] = c;
+				if (out.size() >= MAXNSUG)
+					return false;
 			}
 		}
 	}
+	return true;
 }
 
 auto Dict_Base::bad_char_suggest(std::wstring& word, List_WStrings& out) const
-    -> void
+    -> bool
 {
+	auto attempt = (size_t)0;
 	for (auto new_c : try_chars) {
 		for (size_t i = 0; i != word.size(); ++i) {
 			auto c = word[i];
@@ -1994,26 +2047,38 @@ auto Dict_Base::bad_char_suggest(std::wstring& word, List_WStrings& out) const
 			word[i] = new_c;
 			add_sug_if_correct(word, out);
 			word[i] = c;
+			if (out.size() >= MAXNSUG)
+				return false;
+			if (++attempt >= MAXNATT)
+				return true;
 		}
 	}
+	return true;
 }
 
 auto Dict_Base::forgotten_char_suggest(std::wstring& word,
-                                       List_WStrings& out) const -> void
+                                       List_WStrings& out) const -> bool
 {
+	auto attempt = (size_t)0;
 	for (auto new_c : try_chars) {
 		for (auto i = word.size(); i != size_t(-1); --i) {
 			word.insert(i, 1, new_c);
 			add_sug_if_correct(word, out);
 			word.erase(i, 1);
+			if (out.size() >= MAXNSUG)
+				return false;
+			if (++attempt >= MAXNATT)
+				return true;
 		}
 	}
+	return true;
 }
 
 auto Dict_Base::phonetic_suggest(std::wstring& word, List_WStrings& out) const
-    -> void
+    -> bool
 {
-	using ShortStr = boost::container::small_vector<wchar_t, 64>;
+	using ShortStr =
+	    boost::container::small_vector<wchar_t, 64>; // USE MAXWLEN/2 ?
 	auto backup = ShortStr(begin(word), end(word));
 	transform(begin(word), end(word), begin(word),
 	          [](auto c) { return u_toupper(c); });
@@ -2024,6 +2089,7 @@ auto Dict_Base::phonetic_suggest(std::wstring& word, List_WStrings& out) const
 		add_sug_if_correct(word, out);
 	}
 	word.assign(&backup[0], backup.size());
+	return true;
 }
 
 Dictionary::Dictionary(std::istream& aff, std::istream& dic)
@@ -2128,8 +2194,8 @@ auto Dictionary::spell(const std::string& word) const -> bool
 	auto static thread_local wide_word = wstring();
 	auto static thread_local narrow_word = string();
 	auto ok_enc = external_to_internal_encoding(word, wide_word);
-	if (unlikely(wide_word.size() > 180)) {
-		wide_word.resize(180);
+	if (unlikely(wide_word.size() > MAXWLEN)) {
+		wide_word.resize(MAXWLEN);
 		wide_word.shrink_to_fit();
 		return false;
 	}
@@ -2150,8 +2216,8 @@ auto Dictionary::suggest(const std::string& word,
 	auto static thread_local wide_list = List_WStrings();
 
 	auto ok_enc = external_to_internal_encoding(word, wide_word);
-	if (unlikely(wide_word.size() > 180)) {
-		wide_word.resize(180);
+	if (unlikely(wide_word.size() > MAXWLEN)) {
+		wide_word.resize(MAXWLEN);
 		wide_word.shrink_to_fit();
 		return;
 	}

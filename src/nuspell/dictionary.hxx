@@ -255,25 +255,25 @@ struct Dict_Base : public Aff_Data {
 	auto try_rep_suggestion(std::wstring& word, List_WStrings& out) const
 	    -> void;
 
-	auto rep_suggest(std::wstring& word, List_WStrings& out) const -> void;
+	auto rep_suggest(std::wstring& word, List_WStrings& out) const -> bool;
 
 	auto extra_char_suggest(std::wstring& word, List_WStrings& out) const
-	    -> void;
+	    -> bool;
 
 	auto map_suggest(std::wstring& word, List_WStrings& out,
-	                 size_t i = 0) const -> void;
+	                 size_t& attempt, size_t i = 0) const -> bool;
 
 	auto keyboard_suggest(std::wstring& word, List_WStrings& out) const
-	    -> void;
+	    -> bool;
 
 	auto bad_char_suggest(std::wstring& word, List_WStrings& out) const
-	    -> void;
+	    -> bool;
 
 	auto forgotten_char_suggest(std::wstring& word,
-	                            List_WStrings& out) const -> void;
+	                            List_WStrings& out) const -> bool;
 
 	auto phonetic_suggest(std::wstring& word, List_WStrings& out) const
-	    -> void;
+	    -> bool;
 
       public:
 	Dict_Base()
