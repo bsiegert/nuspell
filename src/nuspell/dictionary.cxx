@@ -360,13 +360,9 @@ auto Dict_Base::check_word(std::wstring& s) const -> const Flag_Set*
 		if (ret6)
 			return &ret6->second;
 
-		auto ret7 = strip_prefix_then_2_suffixes(s);
+		auto ret7 = strip_pfx_then_2_sfx_comm(s);
 		if (ret7)
 			return &ret7->second;
-
-		auto ret8 = strip_suffix_prefix_suffix(s);
-		if (ret8)
-			return &ret8->second;
 
 		// this is slow and unused so comment
 		// auto ret9 = strip_2_suffixes_then_prefix(s);
@@ -956,6 +952,105 @@ auto Dict_Base::strip_pfx_2_sfx_3(const Prefix<wchar_t>& pe1,
 		}
 	}
 
+	return {};
+}
+
+template <Affixing_Mode m>
+auto Dict_Base::strip_pfx_then_2_sfx_comm(std::wstring& word) const
+    -> Affixing_Result<>
+{
+	// The following check is purely for performance, it does not change
+	// correctness.
+	if (!suffixes.has_continuation_flags() &&
+	    !prefixes.has_continuation_flags())
+		return {};
+
+	for (auto& pe1 : prefixes.iterate_prefixes_of(word)) {
+		if (pe1.cross_product == false)
+			continue;
+		if (affix_NOT_valid<m>(pe1))
+			continue;
+		auto pe1_need_affix = pe1.cont_flags.contains(need_affix_flag);
+		auto is_circumfix_pe1 = is_circumfix(pe1);
+		To_Root_Unroot_RAII xxx(word, pe1);
+		if (!pe1.check_condition(word))
+			continue;
+		for (auto& se1 : suffixes.iterate_suffixes_of(word)) {
+
+			// The following check is purely for performance, it
+			// does not change correctness.
+			if (!suffixes.has_continuation_flag(se1.flag) &&
+			    !prefixes.has_continuation_flag(se1.flag))
+				continue;
+
+			if (se1.cross_product == false)
+				continue;
+			if (affix_NOT_valid<m>(se1))
+				continue;
+			auto se1_need_affix =
+			    se1.cont_flags.contains(need_affix_flag);
+			auto is_circumfix_se1 = is_circumfix(se1);
+			To_Root_Unroot_RAII xxx(word, se1);
+			if (!se1.check_condition(word))
+				continue;
+
+			for (auto& se2 : suffixes.iterate_suffixes_of(word)) {
+				if (affix_NOT_valid<m>(se2))
+					continue;
+				auto is_circumfix_se2 = is_circumfix(se2);
+				auto circ1ok =
+				    (is_circumfix_pe1 == is_circumfix_se1) &&
+				    !is_circumfix_se2;
+				auto circ2ok =
+				    (is_circumfix_pe1 == is_circumfix_se2) &&
+				    !is_circumfix_se1;
+				if (!circ1ok && !circ2ok)
+					continue;
+				To_Root_Unroot_RAII xxx(word, se2);
+				if (!se2.check_condition(word))
+					continue;
+
+				for (auto& word_entry : make_iterator_range(
+				         words.equal_range(word))) {
+
+					auto& word_flags = word_entry.second;
+					if (!cross_valid_inner_outer(word_flags,
+					                             se2))
+						continue;
+
+					auto valid_cross_pe_outer =
+					    !pe1_need_affix && circ1ok &&
+					    cross_valid_inner_outer(se2, se1) &&
+					    (cross_valid_inner_outer(se1,
+					                             pe1) ||
+					     cross_valid_inner_outer(word_flags,
+					                             pe1));
+
+					auto valid_cross_se_outer =
+					    !se1_need_affix &&
+					    (cross_valid_inner_outer(word_flags,
+					                             pe1) ||
+					     cross_valid_inner_outer(se2,
+					                             pe1)) &&
+					    (cross_valid_inner_outer(se2,
+					                             se1) ||
+					     cross_valid_inner_outer(pe1, se1));
+
+					if (!valid_cross_pe_outer &&
+					    !valid_cross_se_outer)
+						continue;
+
+					// badflag check
+					if (m == FULL_WORD &&
+					    word_flags.contains(
+					        compound_onlyin_flag))
+						continue;
+					// needflag check here if needed
+					return {word_entry};
+				}
+			}
+		}
+	}
 	return {};
 }
 

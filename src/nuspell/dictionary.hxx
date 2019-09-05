@@ -217,6 +217,10 @@ struct Dict_Base : public Aff_Data {
 	                       const Prefix<wchar_t>& pe2,
 	                       std::wstring& word) const -> Affixing_Result<>;
 
+	template <Affixing_Mode m = FULL_WORD>
+	auto strip_pfx_then_2_sfx_comm(std::wstring& s) const
+	    -> Affixing_Result<>;
+
 	auto check_compound(std::wstring& word) const -> Compounding_Result;
 
 	template <Affixing_Mode m = AT_COMPOUND_BEGIN>
