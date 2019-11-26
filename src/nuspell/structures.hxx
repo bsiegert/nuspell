@@ -650,6 +650,49 @@ class Hash_Multiset {
 	}
 };
 
+class Hash_Set {
+	using key_type = std::string_view;
+	using value_type = std::string;
+	using hasher = std::hash<key_type>;
+	using allocator_type = std::allocator<value_type>;
+	using key_extractor = identity;
+
+	unsigned char* control_bytes = nullptr;
+	value_type* buckets = nullptr;
+	size_t sz = 0;
+	size_t capacity = 0;
+
+      public:
+	Hash_Set() = default;
+	auto find_bucket(const key_type& k) -> value_type*
+	{
+		auto hash_func = hasher();
+		auto extract_key = key_extractor();
+		auto h = hash_func(k);
+		auto h1 = h >> 7;
+		auto h2 = h & 0x7f;
+		auto capacity_minus_one = capacity - 1;
+		auto idx = h1 & capacity_minus_one;
+		auto step = size_t(0);
+		for (; step != capacity;) {
+			auto ctrl = control_bytes[idx];
+			if (ctrl == h2) {
+				auto& val = buckets[idx];
+				auto& k2 = extract_key(val);
+				if (k == k2)
+					return &val;
+			}
+			else if (ctrl == 0x80) // empty, can insert
+				return buckets + idx;
+			// continue search
+			step += 1;
+			idx += step;
+			idx &= capacity_minus_one;
+		}
+		return nullptr;
+	}
+};
+
 struct Condition_Exception : public std::runtime_error {
 	using std::runtime_error::runtime_error;
 };
