@@ -99,8 +99,8 @@ struct Extractor_First_of_Word_Pair {
  * Does not store morphological data as is low priority feature and is out of
  * scope.
  */
-using Word_List = Hash_Multiset<std::pair<std::wstring, Flag_Set>, std::wstring,
-                                Extractor_First_of_Word_Pair>;
+using Word_List = Hash_Multiset2<std::pair<std::wstring, Flag_Set>,
+                                 std::wstring, Extractor_First_of_Word_Pair>;
 
 struct Aff_Data {
 	static const auto HIDDEN_HOMONYM_FLAG = char16_t(-1);

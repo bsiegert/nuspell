@@ -651,13 +651,14 @@ class Hash_Multiset {
 };
 
 template <class Value, class Key = Value, class KeyExtract = identity>
-class Hash_Set {
+class Hash_Multiset2 {
       public:
 	using key_type = Key;
 	using value_type = Value;
+	using bucket_type = boost::container::small_vector<value_type, 1>;
 	using key_extractor = KeyExtract;
 	using hasher = std::hash<key_type>;
-	using allocator_type = std::allocator<value_type>;
+	using allocator_type = std::allocator<bucket_type>;
 	using reference = value_type&;
 	using const_reference = const value_type&;
 	using pointer = value_type*;
@@ -667,7 +668,7 @@ class Hash_Set {
 
       private:
 	unsigned char* control_bytes = nullptr;
-	value_type* buckets = nullptr;
+	bucket_type* buckets = nullptr;
 	size_t sz = 0;
 	size_t capacity = 0;
 	size_t max_load_factor_capacity = 0;
@@ -681,22 +682,22 @@ class Hash_Set {
 		unsigned char h2;
 	};
 
-	auto find_bucket(const key_type& k) -> Find_Result
+	auto find_bucket(const key_type& k) const -> Find_Result
 	{
 		auto hash_func = hasher();
 		auto extract_key = key_extractor();
 		auto alloc = allocator_type();
 		auto h = hash_func(k);
 		auto h1 = h >> 7;
-		auto h2 = h & 0x7f;
+		unsigned char h2 = h & 0x7f;
 		auto capacity_minus_one = capacity - 1;
 		auto idx = h1 & capacity_minus_one;
 		auto step = size_t(0);
 		for (; step != capacity;) {
 			auto ctrl = control_bytes[idx];
 			if (ctrl == h2) {
-				auto& val = buckets[idx];
-				auto& k2 = extract_key(val);
+				auto& b = buckets[idx];
+				auto& k2 = extract_key(b.front());
 				if (k == k2)
 					return {idx, FULL_BUCKET, h2};
 			}
@@ -712,7 +713,7 @@ class Hash_Set {
 	}
 
       public:
-	Hash_Set() = default;
+	Hash_Multiset2() = default;
 	auto size() const { return sz; }
 	auto empty() const { return size() == 0; }
 
@@ -732,11 +733,13 @@ class Hash_Set {
 		}
 		if (count < size() / max_load_fact)
 			count = size_t(size() / max_load_fact);
-		auto n = Hash_Set();
+		auto n = Hash_Multiset2();
 		n.rehash(count);
 		for (size_t i = 0; i != capacity; ++i) {
-			if (control_bytes[i] < 0x80)
-				n.insert(buckets[i]);
+			if (control_bytes[i] >= 0x80)
+				continue;
+			for (auto& v : buckets[i])
+				n.insert(v);
 		}
 		using std::swap;
 		swap(control_bytes, n.control_bytes);
@@ -749,7 +752,7 @@ class Hash_Set {
 	{
 		rehash(std::ceil(count / max_load_fact));
 	}
-	auto insert(const_reference v) -> std::pair<value_type*, bool>
+	auto insert(const_reference v) -> pointer
 	{
 		using All_Tr = std::allocator_traits<allocator_type>;
 		if (sz == max_load_factor_capacity) {
@@ -761,23 +764,25 @@ class Hash_Set {
 		auto res = find_bucket(k);
 		if (res.status == EMPTRY_BUCKET) {
 			auto& ctrl = control_bytes[res.idx];
-			All_Tr::construct(alloc, buckets + res.idx, v);
+			All_Tr::construct(alloc, buckets + res.idx, 1, v);
 			ctrl = res.h2;
-			return {buckets + res.idx, true};
+			return &buckets[res.idx].front();
 		}
-		return {buckets + res.idx, false};
+		buckets[res.idx].push_back(v);
+		return &buckets[res.idx].back();
 	}
 	template <class... Args>
 	auto emplace(Args&&... a)
 	{
-		return insert(value_type(std::forward<Args>(a)...)).first;
+		return insert(value_type(std::forward<Args>(a)...));
 	}
 	auto equal_range(const key_type& key) const
 	    -> std::pair<const_pointer, const_pointer>
 	{
 		auto res = find_bucket(key);
 		if (res.status == FULL_BUCKET)
-			return {&buckets[res.idx], &buckets[res.idx + 1]};
+			return {&*buckets[res.idx].begin(),
+			        &*buckets[res.idx].end()};
 		return {};
 	}
 };
