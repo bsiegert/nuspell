@@ -650,13 +650,13 @@ class Hash_Multiset {
 	}
 };
 
-template <class Value, class Key = const Value&, class KeyExtract = identity>
+template <class Value, class Key = Value, class KeyExtract = identity>
 class Hash_Set {
       public:
 	using key_type = Key;
 	using value_type = Value;
 	using key_extractor = KeyExtract;
-	using hasher = std::hash<std::decay_t<key_type>>;
+	using hasher = std::hash<key_type>;
 	using allocator_type = std::allocator<value_type>;
 	using reference = value_type&;
 	using const_reference = const value_type&;
@@ -755,7 +755,7 @@ class Hash_Set {
 	{
 		return insert(value_type(std::forward<Args>(a)...)).first;
 	}
-	auto equal_range(key_type key) const
+	auto equal_range(const key_type& key) const
 	    -> std::pair<const_pointer, const_pointer>
 	{
 		auto hash_func = hasher();
