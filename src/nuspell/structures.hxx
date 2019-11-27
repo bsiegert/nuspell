@@ -661,13 +661,58 @@ class Hash_Set {
 	value_type* buckets = nullptr;
 	size_t sz = 0;
 	size_t capacity = 0;
+	size_t max_load_factor_capacity = 0;
+
+	static constexpr float max_load_fact = 7.0 / 8.0;
 
       public:
 	Hash_Set() = default;
-	auto find_bucket(const key_type& k) -> value_type*
+	auto size() const { return sz; }
+	auto empty() const { return size() == 0; }
+
+	auto rehash(size_t count) -> void
 	{
+		auto alloc = allocator_type();
+		if (capacity == 0) {
+			capacity = 16;
+			while (capacity < count)
+				capacity *= 2;
+			control_bytes = new unsigned char[capacity];
+			std::fill_n(control_bytes, capacity, 0x80);
+			buckets = alloc.allocate(capacity);
+			max_load_factor_capacity =
+			    size_t(std::ceil(capacity * max_load_fact));
+			return;
+		}
+		if (count < size() / max_load_fact)
+			count = size_t(size() / max_load_fact);
+		auto n = Hash_Set();
+		n.rehash(count);
+		for (size_t i = 0; i != capacity; ++i) {
+			if (control_bytes[i] < 0x80)
+				n.insert(buckets[i]);
+		}
+		using std::swap;
+		swap(control_bytes, n.control_bytes);
+		swap(buckets, n.buckets);
+		swap(sz, n.sz);
+		swap(capacity, n.capacity);
+		swap(max_load_factor_capacity, n.max_load_factor_capacity);
+	}
+	auto reserve(size_t count) -> void
+	{
+		rehash(std::ceil(count / max_load_fact));
+	}
+	auto insert(const value_type& v) -> std::pair<value_type*, bool>
+	{
+		using All_Tr = std::allocator_traits<allocator_type>;
+		if (sz == max_load_factor_capacity) {
+			reserve(sz + 1);
+		}
 		auto hash_func = hasher();
 		auto extract_key = key_extractor();
+		auto alloc = allocator_type();
+		auto& k = extract_key(v);
 		auto h = hash_func(k);
 		auto h1 = h >> 7;
 		auto h2 = h & 0x7f;
@@ -680,16 +725,21 @@ class Hash_Set {
 				auto& val = buckets[idx];
 				auto& k2 = extract_key(val);
 				if (k == k2)
-					return &val;
+					return {&val, false};
 			}
-			else if (ctrl == 0x80) // empty, can insert
-				return buckets + idx;
+			else if (ctrl == 0x80) {
+				// empty, can insert
+				All_Tr::construct(alloc, buckets + idx, v);
+				ctrl = static_cast<unsigned char>(h2);
+				++sz;
+				return {buckets + idx, true};
+			}
 			// continue search
 			step += 1;
 			idx += step;
 			idx &= capacity_minus_one;
 		}
-		return nullptr;
+		return {};
 	}
 };
 
