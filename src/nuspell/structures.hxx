@@ -674,9 +674,10 @@ class Hash_Set {
 
 	static constexpr float max_load_fact = 7.0 / 8.0;
 
+	enum Find_Status : char { NO_BUCKET, EMPTRY_BUCKET, FULL_BUCKET };
 	struct Find_Result {
 		size_t idx;
-		bool can_insert;
+		Find_Status status;
 		unsigned char h2;
 	};
 
@@ -697,10 +698,10 @@ class Hash_Set {
 				auto& val = buckets[idx];
 				auto& k2 = extract_key(val);
 				if (k == k2)
-					return {idx, false, h2};
+					return {idx, FULL_BUCKET, h2};
 			}
 			else if (ctrl == 0x80) {
-				return {idx, true, h2};
+				return {idx, EMPTRY_BUCKET, h2};
 			}
 			// continue search
 			step += 1;
@@ -758,7 +759,7 @@ class Hash_Set {
 		auto alloc = allocator_type();
 		auto& k = extract_key(v);
 		auto res = find_bucket(k);
-		if (res.can_insert) {
+		if (res.status == EMPTRY_BUCKET) {
 			auto& ctrl = control_bytes[res.idx];
 			All_Tr::construct(alloc, buckets + res.idx, v);
 			ctrl = res.h2;
@@ -775,7 +776,7 @@ class Hash_Set {
 	    -> std::pair<const_pointer, const_pointer>
 	{
 		auto res = find_bucket(key);
-		if (!res.can_insert)
+		if (res.status == FULL_BUCKET)
 			return {&buckets[res.idx], &buckets[res.idx + 1]};
 		return {};
 	}
