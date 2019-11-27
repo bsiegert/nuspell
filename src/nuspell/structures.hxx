@@ -650,13 +650,22 @@ class Hash_Multiset {
 	}
 };
 
+template <class Value, class Key = const Value&, class KeyExtract = identity>
 class Hash_Set {
-	using key_type = std::string_view;
-	using value_type = std::string;
-	using hasher = std::hash<key_type>;
+      public:
+	using key_type = Key;
+	using value_type = Value;
+	using key_extractor = KeyExtract;
+	using hasher = std::hash<std::decay_t<key_type>>;
 	using allocator_type = std::allocator<value_type>;
-	using key_extractor = identity;
+	using reference = value_type&;
+	using const_reference = const value_type&;
+	using pointer = value_type*;
+	using const_pointer = const value_type*;
+	using local_iterator = pointer;
+	using local_const_iterator = const_pointer;
 
+      private:
 	unsigned char* control_bytes = nullptr;
 	value_type* buckets = nullptr;
 	size_t sz = 0;
@@ -675,7 +684,7 @@ class Hash_Set {
 		auto alloc = allocator_type();
 		if (capacity == 0) {
 			capacity = 16;
-			while (capacity < count)
+			while (capacity <= count)
 				capacity *= 2;
 			control_bytes = new unsigned char[capacity];
 			std::fill_n(control_bytes, capacity, 0x80);
@@ -703,7 +712,7 @@ class Hash_Set {
 	{
 		rehash(std::ceil(count / max_load_fact));
 	}
-	auto insert(const value_type& v) -> std::pair<value_type*, bool>
+	auto insert(const_reference v) -> std::pair<value_type*, bool>
 	{
 		using All_Tr = std::allocator_traits<allocator_type>;
 		if (sz == max_load_factor_capacity) {
@@ -720,7 +729,7 @@ class Hash_Set {
 		auto idx = h1 & capacity_minus_one;
 		auto step = size_t(0);
 		for (; step != capacity;) {
-			auto ctrl = control_bytes[idx];
+			auto& ctrl = control_bytes[idx];
 			if (ctrl == h2) {
 				auto& val = buckets[idx];
 				auto& k2 = extract_key(val);
@@ -733,6 +742,42 @@ class Hash_Set {
 				ctrl = static_cast<unsigned char>(h2);
 				++sz;
 				return {buckets + idx, true};
+			}
+			// continue search
+			step += 1;
+			idx += step;
+			idx &= capacity_minus_one;
+		}
+		return {};
+	}
+	template <class... Args>
+	auto emplace(Args&&... a)
+	{
+		return insert(value_type(std::forward<Args>(a)...)).first;
+	}
+	auto equal_range(key_type key) const
+	    -> std::pair<const_pointer, const_pointer>
+	{
+		auto hash_func = hasher();
+		auto extract_key = key_extractor();
+		auto alloc = allocator_type();
+		auto& k = key;
+		auto h = hash_func(k);
+		auto h1 = h >> 7;
+		auto h2 = h & 0x7f;
+		auto capacity_minus_one = capacity - 1;
+		auto idx = h1 & capacity_minus_one;
+		auto step = size_t(0);
+		for (; step != capacity;) {
+			auto ctrl = control_bytes[idx];
+			if (ctrl == h2) {
+				auto& val = buckets[idx];
+				auto& k2 = extract_key(val);
+				if (k == k2)
+					return {&val, &val + 1};
+			}
+			else if (ctrl == 0x80) {
+				return {};
 			}
 			// continue search
 			step += 1;
