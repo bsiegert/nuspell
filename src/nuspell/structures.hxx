@@ -674,6 +674,42 @@ class Hash_Set {
 
 	static constexpr float max_load_fact = 7.0 / 8.0;
 
+	struct Find_Result {
+		size_t idx;
+		bool can_insert;
+		unsigned char h2;
+	};
+
+	auto find_bucket(const key_type& k) -> Find_Result
+	{
+		auto hash_func = hasher();
+		auto extract_key = key_extractor();
+		auto alloc = allocator_type();
+		auto h = hash_func(k);
+		auto h1 = h >> 7;
+		auto h2 = h & 0x7f;
+		auto capacity_minus_one = capacity - 1;
+		auto idx = h1 & capacity_minus_one;
+		auto step = size_t(0);
+		for (; step != capacity;) {
+			auto ctrl = control_bytes[idx];
+			if (ctrl == h2) {
+				auto& val = buckets[idx];
+				auto& k2 = extract_key(val);
+				if (k == k2)
+					return {idx, false, h2};
+			}
+			else if (ctrl == 0x80) {
+				return {idx, true, h2};
+			}
+			// continue search
+			step += 1;
+			idx += step;
+			idx &= capacity_minus_one;
+		}
+		return {};
+	}
+
       public:
 	Hash_Set() = default;
 	auto size() const { return sz; }
@@ -718,37 +754,17 @@ class Hash_Set {
 		if (sz == max_load_factor_capacity) {
 			reserve(sz + 1);
 		}
-		auto hash_func = hasher();
 		auto extract_key = key_extractor();
 		auto alloc = allocator_type();
 		auto& k = extract_key(v);
-		auto h = hash_func(k);
-		auto h1 = h >> 7;
-		auto h2 = h & 0x7f;
-		auto capacity_minus_one = capacity - 1;
-		auto idx = h1 & capacity_minus_one;
-		auto step = size_t(0);
-		for (; step != capacity;) {
-			auto& ctrl = control_bytes[idx];
-			if (ctrl == h2) {
-				auto& val = buckets[idx];
-				auto& k2 = extract_key(val);
-				if (k == k2)
-					return {&val, false};
-			}
-			else if (ctrl == 0x80) {
-				// empty, can insert
-				All_Tr::construct(alloc, buckets + idx, v);
-				ctrl = static_cast<unsigned char>(h2);
-				++sz;
-				return {buckets + idx, true};
-			}
-			// continue search
-			step += 1;
-			idx += step;
-			idx &= capacity_minus_one;
+		auto res = find_bucket(k);
+		if (res.can_insert) {
+			auto& ctrl = control_bytes[res.idx];
+			All_Tr::construct(alloc, buckets + res.idx, v);
+			ctrl = res.h2;
+			return {buckets + res.idx, true};
 		}
-		return {};
+		return {buckets + res.idx, false};
 	}
 	template <class... Args>
 	auto emplace(Args&&... a)
@@ -758,32 +774,9 @@ class Hash_Set {
 	auto equal_range(const key_type& key) const
 	    -> std::pair<const_pointer, const_pointer>
 	{
-		auto hash_func = hasher();
-		auto extract_key = key_extractor();
-		auto alloc = allocator_type();
-		auto& k = key;
-		auto h = hash_func(k);
-		auto h1 = h >> 7;
-		auto h2 = h & 0x7f;
-		auto capacity_minus_one = capacity - 1;
-		auto idx = h1 & capacity_minus_one;
-		auto step = size_t(0);
-		for (; step != capacity;) {
-			auto ctrl = control_bytes[idx];
-			if (ctrl == h2) {
-				auto& val = buckets[idx];
-				auto& k2 = extract_key(val);
-				if (k == k2)
-					return {&val, &val + 1};
-			}
-			else if (ctrl == 0x80) {
-				return {};
-			}
-			// continue search
-			step += 1;
-			idx += step;
-			idx &= capacity_minus_one;
-		}
+		auto res = find_bucket(key);
+		if (!res.can_insert)
+			return {&buckets[res.idx], &buckets[res.idx + 1]};
 		return {};
 	}
 };
