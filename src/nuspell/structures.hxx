@@ -722,7 +722,7 @@ class Hash_Multiset2 {
 		auto alloc = allocator_type();
 		if (capacity == 0) {
 			capacity = 16;
-			while (capacity <= count)
+			while (capacity < count)
 				capacity *= 2;
 			control_bytes = new unsigned char[capacity];
 			std::fill_n(control_bytes, capacity, 0x80);
