@@ -788,9 +788,9 @@ auto Dict_Base::strip_pfx_then_sfx_comm_2(const Prefix<wchar_t>& pe,
 	return {};
 }
 
-template <Affixing_Mode m>
-auto Dict_Base::strip_suffix_then_suffix(
-    std::wstring& word, Hidden_Homonym skip_hidden_homonym) const
+auto Dict_Base::strip_suffix_then_suffix(std::wstring& word,
+                                         Hidden_Homonym skip_hidden_homonym,
+                                         Affixing_Mode m) const
     -> Affixing_Result<Suffix<wchar_t>, Suffix<wchar_t>>
 {
 	// The following check is purely for performance, it does not change
@@ -812,18 +812,18 @@ auto Dict_Base::strip_suffix_then_suffix(
 		To_Root_Unroot_RAII<Suffix<wchar_t>> xxx(word, se1);
 		if (!se1.check_condition(word))
 			continue;
-		auto ret = strip_sfx_then_sfx_2<FULL_WORD>(se1, word,
-		                                           skip_hidden_homonym);
+		auto ret = strip_sfx_then_sfx_2(se1, word, skip_hidden_homonym,
+		                                FULL_WORD);
 		if (ret)
 			return ret;
 	}
 	return {};
 }
 
-template <Affixing_Mode m>
 auto Dict_Base::strip_sfx_then_sfx_2(const Suffix<wchar_t>& se1,
                                      std::wstring& word,
-                                     Hidden_Homonym skip_hidden_homonym) const
+                                     Hidden_Homonym skip_hidden_homonym,
+                                     Affixing_Mode m) const
     -> Affixing_Result<Suffix<wchar_t>, Suffix<wchar_t>>
 {
 
@@ -859,9 +859,9 @@ auto Dict_Base::strip_sfx_then_sfx_2(const Suffix<wchar_t>& se1,
 	return {};
 }
 
-template <Affixing_Mode m>
-auto Dict_Base::strip_prefix_then_prefix(
-    std::wstring& word, Hidden_Homonym skip_hidden_homonym) const
+auto Dict_Base::strip_prefix_then_prefix(std::wstring& word,
+                                         Hidden_Homonym skip_hidden_homonym,
+                                         Affixing_Mode m) const
     -> Affixing_Result<Prefix<wchar_t>, Prefix<wchar_t>>
 {
 	// The following check is purely for performance, it does not change
@@ -882,18 +882,18 @@ auto Dict_Base::strip_prefix_then_prefix(
 		To_Root_Unroot_RAII<Prefix<wchar_t>> xxx(word, pe1);
 		if (!pe1.check_condition(word))
 			continue;
-		auto ret = strip_pfx_then_pfx_2<FULL_WORD>(pe1, word,
-		                                           skip_hidden_homonym);
+		auto ret = strip_pfx_then_pfx_2(pe1, word, skip_hidden_homonym,
+		                                FULL_WORD);
 		if (ret)
 			return ret;
 	}
 	return {};
 }
 
-template <Affixing_Mode m>
 auto Dict_Base::strip_pfx_then_pfx_2(const Prefix<wchar_t>& pe1,
                                      std::wstring& word,
-                                     Hidden_Homonym skip_hidden_homonym) const
+                                     Hidden_Homonym skip_hidden_homonym,
+                                     Affixing_Mode m) const
     -> Affixing_Result<Prefix<wchar_t>, Prefix<wchar_t>>
 {
 	auto& dic = words;
@@ -928,9 +928,9 @@ auto Dict_Base::strip_pfx_then_pfx_2(const Prefix<wchar_t>& pe1,
 	return {};
 }
 
-template <Affixing_Mode m>
-auto Dict_Base::strip_prefix_then_2_suffixes(
-    std::wstring& word, Hidden_Homonym skip_hidden_homonym) const
+auto Dict_Base::strip_prefix_then_2_suffixes(std::wstring& word,
+                                             Hidden_Homonym skip_hidden_homonym,
+                                             Affixing_Mode m) const
     -> Affixing_Result<>
 {
 	// The following check is purely for performance, it does not change
@@ -964,8 +964,8 @@ auto Dict_Base::strip_prefix_then_2_suffixes(
 			To_Root_Unroot_RAII<Suffix<wchar_t>> yyy(word, se1);
 			if (!se1.check_condition(word))
 				continue;
-			auto ret = strip_pfx_2_sfx_3<FULL_WORD>(
-			    pe1, se1, word, skip_hidden_homonym);
+			auto ret = strip_pfx_2_sfx_3(
+			    pe1, se1, word, skip_hidden_homonym, FULL_WORD);
 			if (ret)
 				return ret;
 		}
@@ -973,12 +973,11 @@ auto Dict_Base::strip_prefix_then_2_suffixes(
 	return {};
 }
 
-template <Affixing_Mode m>
 auto Dict_Base::strip_pfx_2_sfx_3(const Prefix<wchar_t>& pe1,
                                   const Suffix<wchar_t>& se1,
                                   std::wstring& word,
-                                  Hidden_Homonym skip_hidden_homonym) const
-    -> Affixing_Result<>
+                                  Hidden_Homonym skip_hidden_homonym,
+                                  Affixing_Mode m) const -> Affixing_Result<>
 {
 	auto& dic = words;
 
@@ -1016,9 +1015,9 @@ auto Dict_Base::strip_pfx_2_sfx_3(const Prefix<wchar_t>& pe1,
 	return {};
 }
 
-template <Affixing_Mode m>
-auto Dict_Base::strip_suffix_prefix_suffix(
-    std::wstring& word, Hidden_Homonym skip_hidden_homonym) const
+auto Dict_Base::strip_suffix_prefix_suffix(std::wstring& word,
+                                           Hidden_Homonym skip_hidden_homonym,
+                                           Affixing_Mode m) const
     -> Affixing_Result<>
 {
 	// The following check is purely for performance, it does not change
@@ -1052,8 +1051,8 @@ auto Dict_Base::strip_suffix_prefix_suffix(
 			To_Root_Unroot_RAII<Prefix<wchar_t>> yyy(word, pe1);
 			if (!pe1.check_condition(word))
 				continue;
-			auto ret = strip_s_p_s_3<FULL_WORD>(
-			    se1, pe1, word, skip_hidden_homonym);
+			auto ret = strip_s_p_s_3(
+			    se1, pe1, word, skip_hidden_homonym, FULL_WORD);
 			if (ret)
 				return ret;
 		}
@@ -1061,11 +1060,10 @@ auto Dict_Base::strip_suffix_prefix_suffix(
 	return {};
 }
 
-template <Affixing_Mode m>
 auto Dict_Base::strip_s_p_s_3(const Suffix<wchar_t>& se1,
                               const Prefix<wchar_t>& pe1, std::wstring& word,
-                              Hidden_Homonym skip_hidden_homonym) const
-    -> Affixing_Result<>
+                              Hidden_Homonym skip_hidden_homonym,
+                              Affixing_Mode m) const -> Affixing_Result<>
 {
 	auto& dic = words;
 
@@ -1110,9 +1108,9 @@ auto Dict_Base::strip_s_p_s_3(const Suffix<wchar_t>& se1,
 	return {};
 }
 
-template <Affixing_Mode m>
-auto Dict_Base::strip_2_suffixes_then_prefix(
-    std::wstring& word, Hidden_Homonym skip_hidden_homonym) const
+auto Dict_Base::strip_2_suffixes_then_prefix(std::wstring& word,
+                                             Hidden_Homonym skip_hidden_homonym,
+                                             Affixing_Mode m) const
     -> Affixing_Result<>
 {
 	// The following check is purely for performance, it does not change
@@ -1146,8 +1144,8 @@ auto Dict_Base::strip_2_suffixes_then_prefix(
 			To_Root_Unroot_RAII<Suffix<wchar_t>> yyy(word, se2);
 			if (!se2.check_condition(word))
 				continue;
-			auto ret = strip_2_sfx_pfx_3<FULL_WORD>(
-			    se1, se2, word, skip_hidden_homonym);
+			auto ret = strip_2_sfx_pfx_3(
+			    se1, se2, word, skip_hidden_homonym, FULL_WORD);
 			if (ret)
 				return ret;
 		}
@@ -1155,12 +1153,11 @@ auto Dict_Base::strip_2_suffixes_then_prefix(
 	return {};
 }
 
-template <Affixing_Mode m>
 auto Dict_Base::strip_2_sfx_pfx_3(const Suffix<wchar_t>& se1,
                                   const Suffix<wchar_t>& se2,
                                   std::wstring& word,
-                                  Hidden_Homonym skip_hidden_homonym) const
-    -> Affixing_Result<>
+                                  Hidden_Homonym skip_hidden_homonym,
+                                  Affixing_Mode m) const -> Affixing_Result<>
 {
 	auto& dic = words;
 
@@ -1201,9 +1198,9 @@ auto Dict_Base::strip_2_sfx_pfx_3(const Suffix<wchar_t>& se1,
 	return {};
 }
 
-template <Affixing_Mode m>
-auto Dict_Base::strip_suffix_then_2_prefixes(
-    std::wstring& word, Hidden_Homonym skip_hidden_homonym) const
+auto Dict_Base::strip_suffix_then_2_prefixes(std::wstring& word,
+                                             Hidden_Homonym skip_hidden_homonym,
+                                             Affixing_Mode m) const
     -> Affixing_Result<>
 {
 	// The following check is purely for performance, it does not change
@@ -1237,8 +1234,8 @@ auto Dict_Base::strip_suffix_then_2_prefixes(
 			To_Root_Unroot_RAII<Prefix<wchar_t>> yyy(word, pe1);
 			if (!pe1.check_condition(word))
 				continue;
-			auto ret = strip_sfx_2_pfx_3<FULL_WORD>(
-			    se1, pe1, word, skip_hidden_homonym);
+			auto ret = strip_sfx_2_pfx_3(
+			    se1, pe1, word, skip_hidden_homonym, FULL_WORD);
 			if (ret)
 				return ret;
 		}
@@ -1246,12 +1243,11 @@ auto Dict_Base::strip_suffix_then_2_prefixes(
 	return {};
 }
 
-template <Affixing_Mode m>
 auto Dict_Base::strip_sfx_2_pfx_3(const Suffix<wchar_t>& se1,
                                   const Prefix<wchar_t>& pe1,
                                   std::wstring& word,
-                                  Hidden_Homonym skip_hidden_homonym) const
-    -> Affixing_Result<>
+                                  Hidden_Homonym skip_hidden_homonym,
+                                  Affixing_Mode m) const -> Affixing_Result<>
 {
 	auto& dic = words;
 
@@ -1288,9 +1284,9 @@ auto Dict_Base::strip_sfx_2_pfx_3(const Suffix<wchar_t>& se1,
 	return {};
 }
 
-template <Affixing_Mode m>
-auto Dict_Base::strip_prefix_suffix_prefix(
-    std::wstring& word, Hidden_Homonym skip_hidden_homonym) const
+auto Dict_Base::strip_prefix_suffix_prefix(std::wstring& word,
+                                           Hidden_Homonym skip_hidden_homonym,
+                                           Affixing_Mode m) const
     -> Affixing_Result<>
 {
 	// The following check is purely for performance, it does not change
@@ -1324,8 +1320,8 @@ auto Dict_Base::strip_prefix_suffix_prefix(
 			To_Root_Unroot_RAII<Suffix<wchar_t>> yyy(word, se1);
 			if (!se1.check_condition(word))
 				continue;
-			auto ret = strip_p_s_p_3<FULL_WORD>(
-			    pe1, se1, word, skip_hidden_homonym);
+			auto ret = strip_p_s_p_3(
+			    pe1, se1, word, skip_hidden_homonym, FULL_WORD);
 			if (ret)
 				return ret;
 		}
@@ -1333,11 +1329,10 @@ auto Dict_Base::strip_prefix_suffix_prefix(
 	return {};
 }
 
-template <Affixing_Mode m>
 auto Dict_Base::strip_p_s_p_3(const Prefix<wchar_t>& pe1,
                               const Suffix<wchar_t>& se1, std::wstring& word,
-                              Hidden_Homonym skip_hidden_homonym) const
-    -> Affixing_Result<>
+                              Hidden_Homonym skip_hidden_homonym,
+                              Affixing_Mode m) const -> Affixing_Result<>
 {
 	auto& dic = words;
 
@@ -1381,9 +1376,9 @@ auto Dict_Base::strip_p_s_p_3(const Prefix<wchar_t>& pe1,
 	return {};
 }
 
-template <Affixing_Mode m>
-auto Dict_Base::strip_2_prefixes_then_suffix(
-    std::wstring& word, Hidden_Homonym skip_hidden_homonym) const
+auto Dict_Base::strip_2_prefixes_then_suffix(std::wstring& word,
+                                             Hidden_Homonym skip_hidden_homonym,
+                                             Affixing_Mode m) const
     -> Affixing_Result<>
 {
 	// The following check is purely for performance, it does not change
@@ -1417,8 +1412,8 @@ auto Dict_Base::strip_2_prefixes_then_suffix(
 			To_Root_Unroot_RAII<Prefix<wchar_t>> yyy(word, pe2);
 			if (!pe2.check_condition(word))
 				continue;
-			auto ret = strip_2_pfx_sfx_3<FULL_WORD>(
-			    pe1, pe2, word, skip_hidden_homonym);
+			auto ret = strip_2_pfx_sfx_3(
+			    pe1, pe2, word, skip_hidden_homonym, FULL_WORD);
 			if (ret)
 				return ret;
 		}
@@ -1426,12 +1421,11 @@ auto Dict_Base::strip_2_prefixes_then_suffix(
 	return {};
 }
 
-template <Affixing_Mode m>
 auto Dict_Base::strip_2_pfx_sfx_3(const Prefix<wchar_t>& pe1,
                                   const Prefix<wchar_t>& pe2,
                                   std::wstring& word,
-                                  Hidden_Homonym skip_hidden_homonym) const
-    -> Affixing_Result<>
+                                  Hidden_Homonym skip_hidden_homonym,
+                                  Affixing_Mode m) const -> Affixing_Result<>
 {
 	auto& dic = words;
 
