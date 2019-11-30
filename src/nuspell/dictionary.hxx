@@ -108,16 +108,14 @@ struct Dict_Base : public Aff_Data {
 	                       Hidden_Homonym skip_hidden_homonym = {}) const
 	    -> const Flag_Set*;
 
-	template <Affixing_Mode m>
-	auto affix_NOT_valid(const Prefix<wchar_t>& a) const;
-	template <Affixing_Mode m>
-	auto affix_NOT_valid(const Suffix<wchar_t>& a) const;
-	template <Affixing_Mode m, class AffixT>
-	auto outer_affix_NOT_valid(const AffixT& a) const;
+	auto affix_NOT_valid(const Prefix<wchar_t>& a, Affixing_Mode m) const;
+	auto affix_NOT_valid(const Suffix<wchar_t>& a, Affixing_Mode m) const;
+	template <class AffixT>
+	auto outer_affix_NOT_valid(const AffixT& a, Affixing_Mode m) const;
 	template <class AffixT>
 	auto is_circumfix(const AffixT& a) const;
-	template <Affixing_Mode m>
-	auto is_valid_inside_compound(const Flag_Set& flags) const;
+	auto is_valid_inside_compound(const Flag_Set& flags,
+	                              Affixing_Mode m) const;
 
 	/**
 	 * @brief strip_prefix_only

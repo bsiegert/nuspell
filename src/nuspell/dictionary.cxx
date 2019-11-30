@@ -427,8 +427,7 @@ class To_Root_Unroot_RAII {
 	~To_Root_Unroot_RAII() { affix.to_derived(word); }
 };
 
-template <Affixing_Mode m>
-auto Dict_Base::affix_NOT_valid(const Prefix<wchar_t>& e) const
+auto Dict_Base::affix_NOT_valid(const Prefix<wchar_t>& e, Affixing_Mode m) const
 {
 	if (m == FULL_WORD && e.cont_flags.contains(compound_onlyin_flag))
 		return true;
@@ -439,8 +438,8 @@ auto Dict_Base::affix_NOT_valid(const Prefix<wchar_t>& e) const
 		return true;
 	return false;
 }
-template <Affixing_Mode m>
-auto Dict_Base::affix_NOT_valid(const Suffix<wchar_t>& e) const
+
+auto Dict_Base::affix_NOT_valid(const Suffix<wchar_t>& e, Affixing_Mode m) const
 {
 	if (m == FULL_WORD && e.cont_flags.contains(compound_onlyin_flag))
 		return true;
@@ -451,10 +450,10 @@ auto Dict_Base::affix_NOT_valid(const Suffix<wchar_t>& e) const
 		return true;
 	return false;
 }
-template <Affixing_Mode m, class AffixT>
-auto Dict_Base::outer_affix_NOT_valid(const AffixT& e) const
+template <class AffixT>
+auto Dict_Base::outer_affix_NOT_valid(const AffixT& e, Affixing_Mode m) const
 {
-	if (affix_NOT_valid<m>(e))
+	if (affix_NOT_valid(e, m))
 		return true;
 	if (e.cont_flags.contains(need_affix_flag))
 		return true;
@@ -478,8 +477,8 @@ auto cross_valid_inner_outer(const Flag_Set& word_flags, const Affix& afx)
 	return word_flags.contains(afx.flag);
 }
 
-template <Affixing_Mode m>
-auto Dict_Base::is_valid_inside_compound(const Flag_Set& flags) const
+auto Dict_Base::is_valid_inside_compound(const Flag_Set& flags,
+                                         Affixing_Mode m) const
 {
 	if (m == AT_COMPOUND_BEGIN && !flags.contains(compound_flag) &&
 	    !flags.contains(compound_begin_flag))
@@ -502,7 +501,7 @@ auto Dict_Base::strip_prefix_only(std::wstring& word,
 
 	for (auto it = prefixes.iterate_prefixes_of(word); it; ++it) {
 		auto& e = *it;
-		if (outer_affix_NOT_valid<m>(e))
+		if (outer_affix_NOT_valid(e, m))
 			continue;
 		if (is_circumfix(e))
 			continue;
@@ -522,8 +521,8 @@ auto Dict_Base::strip_prefix_only(std::wstring& word,
 			    word_flags.contains(HIDDEN_HOMONYM_FLAG))
 				continue;
 			// needflag check
-			if (!is_valid_inside_compound<m>(word_flags) &&
-			    !is_valid_inside_compound<m>(e.cont_flags))
+			if (!is_valid_inside_compound(word_flags, m) &&
+			    !is_valid_inside_compound(e.cont_flags, m))
 				continue;
 			return {word_entry, e};
 		}
@@ -539,7 +538,7 @@ auto Dict_Base::strip_suffix_only(std::wstring& word,
 	auto& dic = words;
 	for (auto it = suffixes.iterate_suffixes_of(word); it; ++it) {
 		auto& e = *it;
-		if (outer_affix_NOT_valid<m>(e))
+		if (outer_affix_NOT_valid(e, m))
 			continue;
 		if (e.appending.size() != 0 && m == AT_COMPOUND_END &&
 		    e.cont_flags.contains(compound_onlyin_flag))
@@ -562,8 +561,8 @@ auto Dict_Base::strip_suffix_only(std::wstring& word,
 			    word_flags.contains(HIDDEN_HOMONYM_FLAG))
 				continue;
 			// needflag check
-			if (!is_valid_inside_compound<m>(word_flags) &&
-			    !is_valid_inside_compound<m>(e.cont_flags))
+			if (!is_valid_inside_compound(word_flags, m) &&
+			    !is_valid_inside_compound(e.cont_flags, m))
 				continue;
 			return {word_entry, e};
 		}
@@ -580,7 +579,7 @@ auto Dict_Base::strip_prefix_then_suffix(
 		auto& pe = *it;
 		if (pe.cross_product == false)
 			continue;
-		if (outer_affix_NOT_valid<m>(pe))
+		if (outer_affix_NOT_valid(pe, m))
 			continue;
 		To_Root_Unroot_RAII<Prefix<wchar_t>> xxx(word, pe);
 		if (!pe.check_condition(word))
@@ -605,7 +604,7 @@ auto Dict_Base::strip_pfx_then_sfx_2(const Prefix<wchar_t>& pe,
 		auto& se = *it;
 		if (se.cross_product == false)
 			continue;
-		if (affix_NOT_valid<m>(se))
+		if (affix_NOT_valid(se, m))
 			continue;
 		if (is_circumfix(pe) != is_circumfix(se))
 			continue;
@@ -628,9 +627,9 @@ auto Dict_Base::strip_pfx_then_sfx_2(const Prefix<wchar_t>& pe,
 			    word_flags.contains(HIDDEN_HOMONYM_FLAG))
 				continue;
 			// needflag check
-			if (!is_valid_inside_compound<m>(word_flags) &&
-			    !is_valid_inside_compound<m>(se.cont_flags) &&
-			    !is_valid_inside_compound<m>(pe.cont_flags))
+			if (!is_valid_inside_compound(word_flags, m) &&
+			    !is_valid_inside_compound(se.cont_flags, m) &&
+			    !is_valid_inside_compound(pe.cont_flags, m))
 				continue;
 			return {word_entry, se, pe};
 		}
@@ -648,7 +647,7 @@ auto Dict_Base::strip_suffix_then_prefix(
 		auto& se = *it;
 		if (se.cross_product == false)
 			continue;
-		if (outer_affix_NOT_valid<m>(se))
+		if (outer_affix_NOT_valid(se, m))
 			continue;
 		To_Root_Unroot_RAII<Suffix<wchar_t>> xxx(word, se);
 		if (!se.check_condition(word))
@@ -673,7 +672,7 @@ auto Dict_Base::strip_sfx_then_pfx_2(const Suffix<wchar_t>& se,
 		auto& pe = *it;
 		if (pe.cross_product == false)
 			continue;
-		if (affix_NOT_valid<m>(pe))
+		if (affix_NOT_valid(pe, m))
 			continue;
 		if (is_circumfix(pe) != is_circumfix(se))
 			continue;
@@ -696,9 +695,9 @@ auto Dict_Base::strip_sfx_then_pfx_2(const Suffix<wchar_t>& se,
 			    word_flags.contains(HIDDEN_HOMONYM_FLAG))
 				continue;
 			// needflag check
-			if (!is_valid_inside_compound<m>(word_flags) &&
-			    !is_valid_inside_compound<m>(se.cont_flags) &&
-			    !is_valid_inside_compound<m>(pe.cont_flags))
+			if (!is_valid_inside_compound(word_flags, m) &&
+			    !is_valid_inside_compound(se.cont_flags, m) &&
+			    !is_valid_inside_compound(pe.cont_flags, m))
 				continue;
 			return {word_entry, pe, se};
 		}
@@ -715,7 +714,7 @@ auto Dict_Base::strip_prefix_then_suffix_commutative(
 		auto& pe = *it;
 		if (pe.cross_product == false)
 			continue;
-		if (affix_NOT_valid<m>(pe))
+		if (affix_NOT_valid(pe, m))
 			continue;
 		To_Root_Unroot_RAII<Prefix<wchar_t>> xxx(word, pe);
 		if (!pe.check_condition(word))
@@ -742,7 +741,7 @@ auto Dict_Base::strip_pfx_then_sfx_comm_2(
 		auto& se = *it;
 		if (se.cross_product == false)
 			continue;
-		if (affix_NOT_valid<m>(se))
+		if (affix_NOT_valid(se, m))
 			continue;
 		auto has_needaffix_se = se.cont_flags.contains(need_affix_flag);
 		if (has_needaffix_pe && has_needaffix_se)
@@ -779,9 +778,9 @@ auto Dict_Base::strip_pfx_then_sfx_comm_2(
 			    word_flags.contains(HIDDEN_HOMONYM_FLAG))
 				continue;
 			// needflag check
-			if (!is_valid_inside_compound<m>(word_flags) &&
-			    !is_valid_inside_compound<m>(se.cont_flags) &&
-			    !is_valid_inside_compound<m>(pe.cont_flags))
+			if (!is_valid_inside_compound(word_flags, m) &&
+			    !is_valid_inside_compound(se.cont_flags, m) &&
+			    !is_valid_inside_compound(pe.cont_flags, m))
 				continue;
 			return {word_entry, se, pe};
 		}
@@ -807,7 +806,7 @@ auto Dict_Base::strip_suffix_then_suffix(
 		// change correctness.
 		if (!suffixes.has_continuation_flag(se1.flag))
 			continue;
-		if (outer_affix_NOT_valid<m>(se1))
+		if (outer_affix_NOT_valid(se1, m))
 			continue;
 		if (is_circumfix(se1))
 			continue;
@@ -835,7 +834,7 @@ auto Dict_Base::strip_sfx_then_sfx_2(const Suffix<wchar_t>& se1,
 		auto& se2 = *it;
 		if (!cross_valid_inner_outer(se2, se1))
 			continue;
-		if (affix_NOT_valid<m>(se2))
+		if (affix_NOT_valid(se2, m))
 			continue;
 		if (is_circumfix(se2))
 			continue;
@@ -877,7 +876,7 @@ auto Dict_Base::strip_prefix_then_prefix(
 		// change correctness.
 		if (!prefixes.has_continuation_flag(pe1.flag))
 			continue;
-		if (outer_affix_NOT_valid<m>(pe1))
+		if (outer_affix_NOT_valid(pe1, m))
 			continue;
 		if (is_circumfix(pe1))
 			continue;
@@ -904,7 +903,7 @@ auto Dict_Base::strip_pfx_then_pfx_2(const Prefix<wchar_t>& pe1,
 		auto& pe2 = *it;
 		if (!cross_valid_inner_outer(pe2, pe1))
 			continue;
-		if (affix_NOT_valid<m>(pe2))
+		if (affix_NOT_valid(pe2, m))
 			continue;
 		if (is_circumfix(pe2))
 			continue;
@@ -944,7 +943,7 @@ auto Dict_Base::strip_prefix_then_2_suffixes(
 		auto& pe1 = *i1;
 		if (pe1.cross_product == false)
 			continue;
-		if (outer_affix_NOT_valid<m>(pe1))
+		if (outer_affix_NOT_valid(pe1, m))
 			continue;
 		To_Root_Unroot_RAII<Prefix<wchar_t>> xxx(word, pe1);
 		if (!pe1.check_condition(word))
@@ -959,7 +958,7 @@ auto Dict_Base::strip_prefix_then_2_suffixes(
 
 			if (se1.cross_product == false)
 				continue;
-			if (affix_NOT_valid<m>(se1))
+			if (affix_NOT_valid(se1, m))
 				continue;
 			if (is_circumfix(pe1) != is_circumfix(se1))
 				continue;
@@ -988,7 +987,7 @@ auto Dict_Base::strip_pfx_2_sfx_3(const Prefix<wchar_t>& pe1,
 		auto& se2 = *it;
 		if (!cross_valid_inner_outer(se2, se1))
 			continue;
-		if (affix_NOT_valid<m>(se2))
+		if (affix_NOT_valid(se2, m))
 			continue;
 		if (is_circumfix(se2))
 			continue;
@@ -1040,7 +1039,7 @@ auto Dict_Base::strip_suffix_prefix_suffix(
 
 		if (se1.cross_product == false)
 			continue;
-		if (outer_affix_NOT_valid<m>(se1))
+		if (outer_affix_NOT_valid(se1, m))
 			continue;
 		To_Root_Unroot_RAII<Suffix<wchar_t>> xxx(word, se1);
 		if (!se1.check_condition(word))
@@ -1049,7 +1048,7 @@ auto Dict_Base::strip_suffix_prefix_suffix(
 			auto& pe1 = *i2;
 			if (pe1.cross_product == false)
 				continue;
-			if (affix_NOT_valid<m>(pe1))
+			if (affix_NOT_valid(pe1, m))
 				continue;
 			To_Root_Unroot_RAII<Prefix<wchar_t>> yyy(word, pe1);
 			if (!pe1.check_condition(word))
@@ -1078,7 +1077,7 @@ auto Dict_Base::strip_s_p_s_3(const Suffix<wchar_t>& se1,
 		if (!cross_valid_inner_outer(se2, se1) &&
 		    !cross_valid_inner_outer(pe1, se1))
 			continue;
-		if (affix_NOT_valid<m>(se2))
+		if (affix_NOT_valid(se2, m))
 			continue;
 		auto circ1ok = (is_circumfix(pe1) == is_circumfix(se1)) &&
 		               !is_circumfix(se2);
@@ -1132,7 +1131,7 @@ auto Dict_Base::strip_2_suffixes_then_prefix(
 		    !prefixes.has_continuation_flag(se1.flag))
 			continue;
 
-		if (outer_affix_NOT_valid<m>(se1))
+		if (outer_affix_NOT_valid(se1, m))
 			continue;
 		if (is_circumfix(se1))
 			continue;
@@ -1143,7 +1142,7 @@ auto Dict_Base::strip_2_suffixes_then_prefix(
 			auto& se2 = *i2;
 			if (se2.cross_product == false)
 				continue;
-			if (affix_NOT_valid<m>(se2))
+			if (affix_NOT_valid(se2, m))
 				continue;
 			To_Root_Unroot_RAII<Suffix<wchar_t>> yyy(word, se2);
 			if (!se2.check_condition(word))
@@ -1173,7 +1172,7 @@ auto Dict_Base::strip_2_sfx_pfx_3(const Suffix<wchar_t>& se1,
 		if (!cross_valid_inner_outer(se2, se1) &&
 		    !cross_valid_inner_outer(pe1, se1))
 			continue;
-		if (affix_NOT_valid<m>(pe1))
+		if (affix_NOT_valid(pe1, m))
 			continue;
 		if (is_circumfix(se2) != is_circumfix(pe1))
 			continue;
@@ -1217,7 +1216,7 @@ auto Dict_Base::strip_suffix_then_2_prefixes(
 		auto& se1 = *i1;
 		if (se1.cross_product == false)
 			continue;
-		if (outer_affix_NOT_valid<m>(se1))
+		if (outer_affix_NOT_valid(se1, m))
 			continue;
 		To_Root_Unroot_RAII<Suffix<wchar_t>> xxx(word, se1);
 		if (!se1.check_condition(word))
@@ -1232,7 +1231,7 @@ auto Dict_Base::strip_suffix_then_2_prefixes(
 
 			if (pe1.cross_product == false)
 				continue;
-			if (affix_NOT_valid<m>(pe1))
+			if (affix_NOT_valid(pe1, m))
 				continue;
 			if (is_circumfix(se1) != is_circumfix(pe1))
 				continue;
@@ -1261,7 +1260,7 @@ auto Dict_Base::strip_sfx_2_pfx_3(const Suffix<wchar_t>& se1,
 		auto& pe2 = *it;
 		if (!cross_valid_inner_outer(pe2, pe1))
 			continue;
-		if (affix_NOT_valid<m>(pe2))
+		if (affix_NOT_valid(pe2, m))
 			continue;
 		if (is_circumfix(pe2))
 			continue;
@@ -1312,7 +1311,7 @@ auto Dict_Base::strip_prefix_suffix_prefix(
 
 		if (pe1.cross_product == false)
 			continue;
-		if (outer_affix_NOT_valid<m>(pe1))
+		if (outer_affix_NOT_valid(pe1, m))
 			continue;
 		To_Root_Unroot_RAII<Prefix<wchar_t>> xxx(word, pe1);
 		if (!pe1.check_condition(word))
@@ -1321,7 +1320,7 @@ auto Dict_Base::strip_prefix_suffix_prefix(
 			auto& se1 = *i2;
 			if (se1.cross_product == false)
 				continue;
-			if (affix_NOT_valid<m>(se1))
+			if (affix_NOT_valid(se1, m))
 				continue;
 			To_Root_Unroot_RAII<Suffix<wchar_t>> yyy(word, se1);
 			if (!se1.check_condition(word))
@@ -1350,7 +1349,7 @@ auto Dict_Base::strip_p_s_p_3(const Prefix<wchar_t>& pe1,
 		if (!cross_valid_inner_outer(pe2, pe1) &&
 		    !cross_valid_inner_outer(se1, pe1))
 			continue;
-		if (affix_NOT_valid<m>(pe2))
+		if (affix_NOT_valid(pe2, m))
 			continue;
 		auto circ1ok = (is_circumfix(se1) == is_circumfix(pe1)) &&
 		               !is_circumfix(pe2);
@@ -1403,7 +1402,7 @@ auto Dict_Base::strip_2_prefixes_then_suffix(
 		    !suffixes.has_continuation_flag(pe1.flag))
 			continue;
 
-		if (outer_affix_NOT_valid<m>(pe1))
+		if (outer_affix_NOT_valid(pe1, m))
 			continue;
 		if (is_circumfix(pe1))
 			continue;
@@ -1414,7 +1413,7 @@ auto Dict_Base::strip_2_prefixes_then_suffix(
 			auto& pe2 = *i2;
 			if (pe2.cross_product == false)
 				continue;
-			if (affix_NOT_valid<m>(pe2))
+			if (affix_NOT_valid(pe2, m))
 				continue;
 			To_Root_Unroot_RAII<Prefix<wchar_t>> yyy(word, pe2);
 			if (!pe2.check_condition(word))
@@ -1444,7 +1443,7 @@ auto Dict_Base::strip_2_pfx_sfx_3(const Prefix<wchar_t>& pe1,
 		if (!cross_valid_inner_outer(pe2, pe1) &&
 		    !cross_valid_inner_outer(se1, pe1))
 			continue;
-		if (affix_NOT_valid<m>(se1))
+		if (affix_NOT_valid(se1, m))
 			continue;
 		if (is_circumfix(pe2) != is_circumfix(se1))
 			continue;
