@@ -492,9 +492,9 @@ auto Dict_Base::is_valid_inside_compound(const Flag_Set& flags,
 	return true;
 }
 
-template <Affixing_Mode m>
 auto Dict_Base::strip_prefix_only(std::wstring& word,
-                                  Hidden_Homonym skip_hidden_homonym) const
+                                  Hidden_Homonym skip_hidden_homonym,
+                                  Affixing_Mode m) const
     -> Affixing_Result<Prefix<wchar_t>>
 {
 	auto& dic = words;
@@ -530,9 +530,9 @@ auto Dict_Base::strip_prefix_only(std::wstring& word,
 	return {};
 }
 
-template <Affixing_Mode m>
 auto Dict_Base::strip_suffix_only(std::wstring& word,
-                                  Hidden_Homonym skip_hidden_homonym) const
+                                  Hidden_Homonym skip_hidden_homonym,
+                                  Affixing_Mode m) const
     -> Affixing_Result<Suffix<wchar_t>>
 {
 	auto& dic = words;
@@ -705,10 +705,9 @@ auto Dict_Base::strip_sfx_then_pfx_2(const Suffix<wchar_t>& se,
 	return {};
 }
 
-template <Affixing_Mode m>
 auto Dict_Base::strip_prefix_then_suffix_commutative(
-    std::wstring& word, Hidden_Homonym skip_hidden_homonym) const
-    -> Affixing_Result<Suffix<wchar_t>, Prefix<wchar_t>>
+    std::wstring& word, Hidden_Homonym skip_hidden_homonym,
+    Affixing_Mode m) const -> Affixing_Result<Suffix<wchar_t>, Prefix<wchar_t>>
 {
 	for (auto it = prefixes.iterate_prefixes_of(word); it; ++it) {
 		auto& pe = *it;
@@ -720,17 +719,17 @@ auto Dict_Base::strip_prefix_then_suffix_commutative(
 		if (!pe.check_condition(word))
 			continue;
 		auto ret =
-		    strip_pfx_then_sfx_comm_2<m>(pe, word, skip_hidden_homonym);
+		    strip_pfx_then_sfx_comm_2(pe, word, skip_hidden_homonym, m);
 		if (ret)
 			return ret;
 	}
 	return {};
 }
 
-template <Affixing_Mode m>
-auto Dict_Base::strip_pfx_then_sfx_comm_2(
-    const Prefix<wchar_t>& pe, std::wstring& word,
-    Hidden_Homonym skip_hidden_homonym) const
+auto Dict_Base::strip_pfx_then_sfx_comm_2(const Prefix<wchar_t>& pe,
+                                          std::wstring& word,
+                                          Hidden_Homonym skip_hidden_homonym,
+                                          Affixing_Mode m) const
     -> Affixing_Result<Suffix<wchar_t>, Prefix<wchar_t>>
 {
 	auto& dic = words;
@@ -1926,20 +1925,20 @@ auto Dict_Base::check_word_in_compound(std::wstring& word) const
 		auto num_syllable_mod = calc_syllable_modifier<m>(we);
 		return {&we, 0, num_syllable_mod};
 	}
-	auto x2 = strip_suffix_only<m>(word, SKIP_HIDDEN_HOMONYM);
+	auto x2 = strip_suffix_only(word, SKIP_HIDDEN_HOMONYM, m);
 	if (x2) {
 		auto num_syllable_mod = calc_syllable_modifier<m>(*x2, *x2.a);
 		return {x2, 0, num_syllable_mod, is_modiying_affix(*x2.a)};
 	}
 
-	auto x1 = strip_prefix_only<m>(word, SKIP_HIDDEN_HOMONYM);
+	auto x1 = strip_prefix_only(word, SKIP_HIDDEN_HOMONYM, m);
 	if (x1) {
 		auto num_words_mod = calc_num_words_modifier(*x1.a);
 		return {x1, num_words_mod, 0, is_modiying_affix(*x1.a)};
 	}
 
 	auto x3 =
-	    strip_prefix_then_suffix_commutative<m>(word, SKIP_HIDDEN_HOMONYM);
+	    strip_prefix_then_suffix_commutative(word, SKIP_HIDDEN_HOMONYM, m);
 	if (x3) {
 		auto num_words_mod = calc_num_words_modifier(*x3.b);
 		auto num_syllable_mod = calc_syllable_modifier<m>(*x3, *x3.a);
