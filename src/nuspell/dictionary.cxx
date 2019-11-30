@@ -570,9 +570,9 @@ auto Dict_Base::strip_suffix_only(std::wstring& word,
 	return {};
 }
 
-template <Affixing_Mode m>
-auto Dict_Base::strip_prefix_then_suffix(
-    std::wstring& word, Hidden_Homonym skip_hidden_homonym) const
+auto Dict_Base::strip_prefix_then_suffix(std::wstring& word,
+                                         Hidden_Homonym skip_hidden_homonym,
+                                         Affixing_Mode m) const
     -> Affixing_Result<Suffix<wchar_t>, Prefix<wchar_t>>
 {
 	for (auto it = prefixes.iterate_prefixes_of(word); it; ++it) {
@@ -585,17 +585,17 @@ auto Dict_Base::strip_prefix_then_suffix(
 		if (!pe.check_condition(word))
 			continue;
 		auto ret =
-		    strip_pfx_then_sfx_2<m>(pe, word, skip_hidden_homonym);
+		    strip_pfx_then_sfx_2(pe, word, skip_hidden_homonym, m);
 		if (ret)
 			return ret;
 	}
 	return {};
 }
 
-template <Affixing_Mode m>
 auto Dict_Base::strip_pfx_then_sfx_2(const Prefix<wchar_t>& pe,
                                      std::wstring& word,
-                                     Hidden_Homonym skip_hidden_homonym) const
+                                     Hidden_Homonym skip_hidden_homonym,
+                                     Affixing_Mode m) const
     -> Affixing_Result<Suffix<wchar_t>, Prefix<wchar_t>>
 {
 	auto& dic = words;
@@ -638,9 +638,9 @@ auto Dict_Base::strip_pfx_then_sfx_2(const Prefix<wchar_t>& pe,
 	return {};
 }
 
-template <Affixing_Mode m>
-auto Dict_Base::strip_suffix_then_prefix(
-    std::wstring& word, Hidden_Homonym skip_hidden_homonym) const
+auto Dict_Base::strip_suffix_then_prefix(std::wstring& word,
+                                         Hidden_Homonym skip_hidden_homonym,
+                                         Affixing_Mode m) const
     -> Affixing_Result<Prefix<wchar_t>, Suffix<wchar_t>>
 {
 	for (auto it = suffixes.iterate_suffixes_of(word); it; ++it) {
@@ -653,17 +653,17 @@ auto Dict_Base::strip_suffix_then_prefix(
 		if (!se.check_condition(word))
 			continue;
 		auto ret =
-		    strip_sfx_then_pfx_2<m>(se, word, skip_hidden_homonym);
+		    strip_sfx_then_pfx_2(se, word, skip_hidden_homonym, m);
 		if (ret)
 			return ret;
 	}
 	return {};
 }
 
-template <Affixing_Mode m>
 auto Dict_Base::strip_sfx_then_pfx_2(const Suffix<wchar_t>& se,
                                      std::wstring& word,
-                                     Hidden_Homonym skip_hidden_homonym) const
+                                     Hidden_Homonym skip_hidden_homonym,
+                                     Affixing_Mode m) const
     -> Affixing_Result<Prefix<wchar_t>, Suffix<wchar_t>>
 {
 	auto& dic = words;
