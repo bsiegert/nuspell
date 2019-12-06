@@ -655,10 +655,12 @@ class Hash_Multiset2 {
       public:
 	using key_type = Key;
 	using value_type = Value;
-	using bucket_type = boost::container::small_vector<value_type, 1>;
-	using key_extractor = KeyExtract;
+	using size_type = size_t;
+	using difference_type = ptrdiff_t;
+	using Bucket_Type = boost::container::small_vector<value_type, 1>;
+	using Key_Extractor = KeyExtract;
 	using hasher = std::hash<key_type>;
-	using allocator_type = std::allocator<bucket_type>;
+	using allocator_type = std::allocator<Bucket_Type>;
 	using reference = value_type&;
 	using const_reference = const value_type&;
 	using pointer = value_type*;
@@ -667,8 +669,13 @@ class Hash_Multiset2 {
 	using local_const_iterator = const_pointer;
 
       private:
+	using Alloc_Tr = std::allocator_traits<allocator_type>;
+	using Char_Alloc =
+	    typename Alloc_Tr::template rebind_alloc<unsigned char>;
+	using Char_Alloc_Tr = std::allocator_traits<Char_Alloc>;
+
 	unsigned char* control_bytes = nullptr;
-	bucket_type* buckets = nullptr;
+	Bucket_Type* buckets = nullptr;
 	size_t sz = 0;
 	size_t capacity = 0;
 	size_t max_load_factor_capacity = 0;
@@ -685,7 +692,7 @@ class Hash_Multiset2 {
 	auto find_bucket(const key_type& k) const -> Find_Result
 	{
 		auto hash_func = hasher();
-		auto extract_key = key_extractor();
+		auto extract_key = Key_Extractor();
 		auto alloc = allocator_type();
 		auto h = hash_func(k);
 		auto h1 = h >> 7;
@@ -712,6 +719,20 @@ class Hash_Multiset2 {
 		return {};
 	}
 
+	auto first_allocation(size_t count)
+	{
+		auto alloc = allocator_type();
+		auto ch_alloc = Char_Alloc(alloc);
+		capacity = 16;
+		while (capacity < count)
+			capacity *= 2;
+		control_bytes = Char_Alloc_Tr::allocate(ch_alloc, capacity);
+		buckets = Alloc_Tr::allocate(alloc, capacity);
+		std::fill_n(control_bytes, capacity, 0x80);
+		max_load_factor_capacity =
+		    size_t(std::ceil(capacity * max_load_fact));
+	}
+
       public:
 	Hash_Multiset2() = default;
 	auto size() const { return sz; }
@@ -721,20 +742,13 @@ class Hash_Multiset2 {
 	{
 		auto alloc = allocator_type();
 		if (capacity == 0) {
-			capacity = 16;
-			while (capacity < count)
-				capacity *= 2;
-			control_bytes = new unsigned char[capacity];
-			std::fill_n(control_bytes, capacity, 0x80);
-			buckets = alloc.allocate(capacity);
-			max_load_factor_capacity =
-			    size_t(std::ceil(capacity * max_load_fact));
+			first_allocation(count);
 			return;
 		}
 		if (count < size() / max_load_fact)
 			count = size_t(size() / max_load_fact);
 		auto n = Hash_Multiset2();
-		n.rehash(count);
+		n.first_allocation(count);
 		for (size_t i = 0; i != capacity; ++i) {
 			if (control_bytes[i] >= 0x80)
 				continue;
@@ -754,17 +768,16 @@ class Hash_Multiset2 {
 	}
 	auto insert(const_reference v) -> pointer
 	{
-		using All_Tr = std::allocator_traits<allocator_type>;
 		if (sz == max_load_factor_capacity) {
 			reserve(sz + 1);
 		}
-		auto extract_key = key_extractor();
+		auto extract_key = Key_Extractor();
 		auto alloc = allocator_type();
 		auto& k = extract_key(v);
 		auto res = find_bucket(k);
 		if (res.status == EMPTRY_BUCKET) {
 			auto& ctrl = control_bytes[res.idx];
-			All_Tr::construct(alloc, buckets + res.idx, 1, v);
+			Alloc_Tr::construct(alloc, buckets + res.idx, 1, v);
 			ctrl = res.h2;
 			return &buckets[res.idx].front();
 		}
@@ -776,6 +789,18 @@ class Hash_Multiset2 {
 	{
 		return insert(value_type(std::forward<Args>(a)...));
 	}
+	~Hash_Multiset2()
+	{
+		auto alloc = allocator_type();
+		auto ch_alloc = Char_Alloc(alloc);
+		for (size_t i = 0; i != capacity; ++i) {
+			if (control_bytes[i] < 0x80)
+				Alloc_Tr::destroy(alloc, buckets + i);
+		}
+		Alloc_Tr::deallocate(alloc, buckets, capacity);
+		Char_Alloc_Tr::deallocate(ch_alloc, control_bytes, capacity);
+	}
+	// TODO needs copy and move opeations
 	auto equal_range(const key_type& key) const
 	    -> std::pair<const_pointer, const_pointer>
 	{
