@@ -180,7 +180,7 @@ auto Dict_Base::spell_casing(std::wstring& s) const -> const Flag_Set*
 	case Casing::SMALL:
 	case Casing::CAMEL:
 	case Casing::PASCAL:
-		res = check_word(s, FORBID_BAD_FORCEUCASE);
+		res = check_word(s);
 		break;
 	case Casing::ALL_CAPITAL:
 		res = spell_casing_upper(s);
@@ -1606,14 +1606,10 @@ auto Dict_Base::check_compound_classic(std::wstring& word, size_t start_pos,
 		if (is_rep_similar(part))
 			goto try_recursive;
 	}
-	if (compound_force_uppercase) {
-		if (allow_bad_forceucase == FORBID_BAD_FORCEUCASE) {
-			// first letter lowercase
-			if (part2_entry->second.contains(
-			        compound_force_uppercase))
-				goto try_recursive;
-		}
-	}
+	if (compound_force_uppercase && !allow_bad_forceucase &&
+	    part2_entry->second.contains(compound_force_uppercase))
+		goto try_recursive;
+
 	old_num_part = num_part;
 	num_part += part2_entry.num_words_modifier;
 	num_part += compound_root_flag &&
@@ -1687,14 +1683,10 @@ try_simplified_triple:
 		if (is_rep_similar(part))
 			goto try_simplified_triple_recursive;
 	}
-	if (compound_force_uppercase) {
-		if (allow_bad_forceucase == FORBID_BAD_FORCEUCASE) {
-			// first letter lowercase
-			if (part2_entry->second.contains(
-			        compound_force_uppercase))
-				goto try_simplified_triple_recursive;
-		}
-	}
+	if (compound_force_uppercase && !allow_bad_forceucase &&
+	    part2_entry->second.contains(compound_force_uppercase))
+		goto try_simplified_triple_recursive;
+
 	if (compound_max_word_count != 0 &&
 	    num_part + 1 >= compound_max_word_count)
 		return {};
@@ -1787,14 +1779,10 @@ auto Dict_Base::check_compound_with_pattern_replacements(
 			if (is_rep_similar(part))
 				goto try_recursive;
 		}
-		if (compound_force_uppercase) {
-			if (allow_bad_forceucase == FORBID_BAD_FORCEUCASE) {
-				// first letter lowercase
-				if (part2_entry->second.contains(
-				        compound_force_uppercase))
-					goto try_recursive;
-			}
-		}
+		if (compound_force_uppercase && !allow_bad_forceucase &&
+		    part2_entry->second.contains(compound_force_uppercase))
+			goto try_recursive;
+
 		if (compound_max_word_count != 0 &&
 		    num_part + 1 >= compound_max_word_count)
 			return {};
@@ -1854,14 +1842,10 @@ auto Dict_Base::check_compound_with_pattern_replacements(
 			if (is_rep_similar(part))
 				goto try_simplified_triple_recursive;
 		}
-		if (compound_force_uppercase) {
-			if (allow_bad_forceucase == FORBID_BAD_FORCEUCASE) {
-				// first letter lowercase
-				if (part2_entry->second.contains(
-				        compound_force_uppercase))
-					goto try_simplified_triple_recursive;
-			}
-		}
+		if (compound_force_uppercase && !allow_bad_forceucase &&
+		    part2_entry->second.contains(compound_force_uppercase))
+			goto try_simplified_triple_recursive;
+
 		if (compound_max_word_count != 0 &&
 		    num_part + 1 >= compound_max_word_count)
 			return {};
@@ -2066,15 +2050,11 @@ auto Dict_Base::check_compound_with_rules(
 			auto m = compound_rules.match_any_rule(words_data);
 			if (!m)
 				goto try_recursive;
-			if (compound_force_uppercase) {
-				if (allow_bad_forceucase ==
-				    FORBID_BAD_FORCEUCASE) {
-					// first letter lowercase
-					if (part2_entry->second.contains(
-					        compound_force_uppercase))
-						goto try_recursive;
-				}
-			}
+			if (compound_force_uppercase && !allow_bad_forceucase &&
+			    part2_entry->second.contains(
+			        compound_force_uppercase))
+				goto try_recursive;
+
 			return {part1_entry};
 		}
 	try_recursive:
@@ -2192,8 +2172,7 @@ auto Dict_Base::suggest_priv(std::wstring& word, List_WStrings& out) const
 				for (auto& t : sugs_tmp) {
 					word = backup;
 					word.replace(i, j - i, t);
-					auto flg = check_word(
-					    word, FORBID_BAD_FORCEUCASE);
+					auto flg = check_word(word);
 					if (!flg ||
 					    !flg->contains(forbiddenword_flag))
 						out.push_back(word);
@@ -2353,7 +2332,7 @@ auto Dict_Base::try_rep_suggestion(std::wstring& word, List_WStrings& out) const
 	auto part = wstring();
 	for (; j != word.npos; i = j + 1, j = word.find(' ', i)) {
 		part.assign(word, i, j - i);
-		if (!check_word(part, FORBID_BAD_FORCEUCASE))
+		if (!check_word(part))
 			return;
 	}
 	out.push_back(word);

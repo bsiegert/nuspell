@@ -106,7 +106,7 @@ struct Dict_Base : public Aff_Data {
 	auto spell_sharps(std::wstring& base, size_t n_pos = 0, size_t n = 0,
 	                  size_t rep = 0) const -> const Flag_Set*;
 
-	auto check_word(std::wstring& s, Forceucase allow_bad_forceucase,
+	auto check_word(std::wstring& s, Forceucase allow_bad_forceucase = {},
 	                Hidden_Homonym skip_hidden_homonym = {}) const
 	    -> const Flag_Set*;
 	auto check_simple_word(std::wstring& word,
